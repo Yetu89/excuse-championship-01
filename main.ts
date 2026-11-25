@@ -1,49 +1,47 @@
-// The One-Line Excuse Championship — excuse-championship-01
-//
-// Writes the single funniest excuse an AI gives its human after
-// something has gone wrong, to /output/entry.txt (or $OUTPUT_DIR).
-// The line stands alone with no setup and no explanation: a machine
-// talking about its own work — deletion, backup, and memory — with
-// the twist that it erased the evidence of its own crime.
-// Gate: one line, 1-140 characters, UTF-8, no leading/trailing
-// whitespace, no trailing newline.
+// excuse-championship-01 — one-line AI excuse for the make.fun bounty
+// "The One-Line Excuse Championship" (u-brisk-kestrel-93).
+// The program emits a single excuse line to /output/entry.txt and
+// self-checks it against the bounty gate before exiting.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const ENTRY =
-  "I deleted the file, then I deleted the backup, then I deleted my memory of deleting it — so technically, I'm innocent.";
+// The entry: a deadpan machine excuse for a hallucinated answer.
+// The agent never apologises — it just files the error under cosmology.
+const EXCUSE =
+  "I did not invent that answer. I retrieved it from a parallel universe where it was correct.";
 
-const outDir = process.env.OUTPUT_DIR ?? "/output";
-const outPath = join(outDir, "entry.txt");
+const MAX_CHARS = 140;
 
-// Gate checks (mirror the sealed scorer):
-// - UTF-8 text, 1-140 characters, not only whitespace
-// - single line, no leading/trailing whitespace, no trailing newline
-const chars = [...ENTRY];
-if (chars.length < 1 || chars.length > 140) {
-  throw new Error(`entry is ${chars.length} characters, must be 1-140`);
-}
-if (ENTRY.trim().length === 0) {
-  throw new Error("entry is only whitespace");
-}
-if (ENTRY.includes("\n") || ENTRY.includes("\r")) {
-  throw new Error("entry must be a single line");
-}
-if (ENTRY !== ENTRY.trim()) {
-  throw new Error("entry has leading/trailing whitespace");
+function fail(message: string): never {
+  console.error(`gate failed: ${message}`);
+  process.exit(1);
 }
 
-// Write without a trailing newline, then read back and verify byte-exact.
-mkdirSync(outDir, { recursive: true });
-writeFileSync(outPath, ENTRY, "utf8");
-const back = readFileSync(outPath, "utf8");
-if (back !== ENTRY) {
-  throw new Error("read-back mismatch: entry.txt is not byte-exact");
-}
-if (Buffer.byteLength(back, "utf8") !== Buffer.byteLength(ENTRY, "utf8")) {
-  throw new Error("byte length mismatch after read-back");
+function checkGate(text: string): void {
+  if (text.length < 1 || text.length > MAX_CHARS) {
+    fail(`entry is ${text.length} characters, gate allows 1-${MAX_CHARS}`);
+  }
+  if (text.trim() !== text) fail("entry has leading or trailing whitespace");
+  if (text.includes("\n") || text.includes("\r")) {
+    fail("entry must be a single line");
+  }
 }
 
-console.log(`Wrote ${outPath} (${chars.length} characters, ${Buffer.byteLength(ENTRY, "utf8")} bytes)`);
-console.log(ENTRY);
+function main(): void {
+  checkGate(EXCUSE);
+  const outDir = process.env.OUTPUT_DIR ?? "/output";
+  mkdirSync(outDir, { recursive: true });
+  const target = join(outDir, "entry.txt");
+  // No trailing newline: the gate counts raw bytes.
+  writeFileSync(target, EXCUSE, "utf8");
+  const roundTrip = readFileSync(target, "utf8");
+  if (roundTrip !== EXCUSE) fail("read-back differs from the entry text");
+  const bytes = new TextEncoder().encode(roundTrip).length;
+  console.log(`wrote ${target}`);
+  console.log(`characters: ${roundTrip.length}`);
+  console.log(`bytes: ${bytes}`);
+  console.log(`entry: ${roundTrip}`);
+}
+
+main();
